@@ -5,6 +5,7 @@ import "insonmnia.proto";
 
 package sonm;
 
+// TODO: deprecated.
 enum OrderType {
     ANY = 0;
     BID = 1;
@@ -19,6 +20,7 @@ message Geo {
     float lon = 4;
 }
 
+// TODO: deprecated.
 message Resources {
     // CPU core count
     uint64 cpuCores = 1;
@@ -39,6 +41,7 @@ message Resources {
     map<string, double> properties = 8;
 }
 
+// TODO: deprecated.
 message Slot {
     // Buyer’s rating. Got from Buyer’s profile for BID orders rating_supplier.
     int64 buyerRating = 1;
@@ -52,11 +55,12 @@ message Slot {
     uint64 duration = 5;
 }
 
+// TODO: deprecated.
 message Order {
     // Order ID, UUIDv4
     string id = 1;
     // Buyer's EtherumID
-    string byuerID = 2;
+    string buyerID = 2;
     // Supplier's is EtherumID
     string supplierID = 3;
     // Order type (Bid or Ask)

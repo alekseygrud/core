@@ -11,6 +11,7 @@ It is generated from these files:
 	capabilities.proto
 	container.proto
 	deal.proto
+	dwh.proto
 	hub.proto
 	insonmnia.proto
 	marketplace.proto
@@ -36,6 +37,12 @@ It has these top-level messages:
 	NetworkSpec
 	Container
 	Deal
+	OrdersListRequest
+	OrdersListReply
+	DealsListRequest
+	DealsListReply
+	DealChangeRequestsReply
+	DealChangeRequest
 	StartTaskRequest
 	HubJoinNetworkRequest
 	StartTaskReply

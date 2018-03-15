@@ -28,6 +28,8 @@ var (
 	WorkerAnnouncedTopic     = common.HexToHash("0x7")
 	WorkerConfirmedTopic     = common.HexToHash("0x8")
 	WorkerRemovedTopic       = common.HexToHash("0x9")
+	// TODO: deprecated.
+	DealClosedTopic = common.HexToHash("0x72615f99a62a6cc2f8452d5c0c9cbc5683995297e1d988f09bb1471d4eefb890")
 )
 
 func initEthClient(ethEndpoint *string) (*ethclient.Client, error) {

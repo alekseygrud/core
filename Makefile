@@ -24,6 +24,7 @@ HUB=${TARGETDIR}/sonmhub_$(OS_ARCH)
 CLI=${TARGETDIR}/sonmcli_$(OS_ARCH)
 LOCAL_NODE=${TARGETDIR}/sonmnode_$(OS_ARCH)
 AUTOCLI=${TARGETDIR}/autocli_$(OS_ARCH)
+DWH=${TARGETDIR}/sonmdwh_$(OS_ARCH)
 RENDEZVOUS=${TARGETDIR}/sonmrendezvous_$(OS_ARCH)
 RELAY=${TARGETDIR}/sonmrelay_$(OS_ARCH)
 LSGPU=${TARGETDIR}/lsgpu_$(OS_ARCH)
@@ -58,6 +59,10 @@ all: mock vet fmt build test
 build/hub:
 	@echo "+ $@"
 	CGO_LDFLAGS_ALLOW=${CGO_LDFLAGS_ALLOW} CGO_LDFLAGS=${CGO_LDFLAGS} CGO_CFLAGS=${CGO_CFLAGS} ${GO} build -tags "$(TAGS) $(GPU_TAGS)" -ldflags "-s $(LDFLAGS)" -o ${HUB} ${GOCMD}/hub
+
+build/dwh:
+	@echo "+ $@"
+	${GO} build -tags "$(TAGS)" -ldflags "-s $(LDFLAGS)" -o ${HUB} ${GOCMD}/dwh
 
 build/rv:
 	@echo "+ $@"
@@ -96,7 +101,7 @@ build/autocli:
 
 build/insomnia: build/hub build/cli build/node
 
-build/aux: build/relay build/rv
+build/aux: build/relay build/rv build/dwh
 
 build: build/insomnia build/aux
 
@@ -134,6 +139,7 @@ mock: build_mockgen
 	mockgen -package task_config -destination cmd/cli/task_config/config_mock.go  -source cmd/cli/task_config/config.go
 	mockgen -package accounts -destination accounts/keys_mock.go  -source accounts/keys.go
 	mockgen -package benchmarks -destination insonmnia/benchmarks/benchmarks_mock.go  -source insonmnia/benchmarks/benchmarks.go
+	mockgen -package blockchain -destination blockchain/api_old_mock.go  -source blockchain/api_old.go
 	mockgen -package blockchain -destination blockchain/api_mock.go  -source blockchain/api.go
 	mockgen -package blockchain -destination blockchain/api_old_mock.go  -source blockchain/api_old.go
 	mockgen -package sonm -destination proto/marketplace_mock.go  -source proto/marketplace.pb.go

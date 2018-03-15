@@ -58,7 +58,7 @@ func (d *dealAuthorization) Authorize(ctx context.Context, request interface{}) 
 		return err
 	}
 
-	allowedWallet := meta.Order.GetByuerID()
+	allowedWallet := meta.Order.GetBuyerID()
 
 	log.G(d.ctx).Debug("found allowed wallet for a deal",
 		zap.Stringer("deal", dealID),
@@ -88,7 +88,7 @@ func newFieldDealExtractor() DealExtractor {
 			return "", errInvalidDealField
 		}
 
-		dealId := reflect.Indirect(deal).FieldByName("Id")
+		dealId := reflect.Indirect(deal).FieldByName("ID")
 		if !dealId.IsValid() {
 			return "", errInvalidDealField
 		}
@@ -120,10 +120,10 @@ func newContextDealExtractor() DealExtractor {
 }
 
 // NewFromTaskDealExtractor constructs a deal id extractor that requires the
-// specified request to have "Id" field, which is the task id.
+// specified request to have "ID" field, which is the task id.
 // This task id is used to extract current deal id from the Hub.
 func newFromTaskDealExtractor(hubState *state) DealExtractor {
-	return newFromNamedTaskDealExtractor(hubState, "Id")
+	return newFromNamedTaskDealExtractor(hubState, "ID")
 }
 
 func newFromNamedTaskDealExtractor(hubState *state, name string) DealExtractor {
