@@ -5,10 +5,8 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -68,7 +66,7 @@ func NewDWH(ctx context.Context, cfg *Config, key *ecdsa.PrivateKey) (w *DWH, er
 	pb.RegisterDWHServer(w.grpc, w)
 	grpc_prometheus.Register(w.grpc)
 
-	bAPI, err := blockchain.NewBlockchainAPI(&cfg.Blockchain.EthEndpoint, &cfg.Blockchain.GasPrice)
+	bAPI, err := blockchain.NewAPI(&cfg.Blockchain.EthEndpoint, &cfg.Blockchain.GasPrice)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init blockchain client")
 	}
@@ -95,59 +93,47 @@ func (w *DWH) GetDealsList(ctx context.Context, request *pb.DealsListRequest) (*
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	var (
-		query      = "SELECT * FROM deals"
-		conditions []string
-		values     []interface{}
-	)
+	var filters []*Filter
 	// Prepare WHERE clause.
 	if len(request.SupplierID) > 0 {
-		conditions = append(conditions, "supplier_id=?")
-		values = append(values, request.SupplierID)
+		filters = append(filters, NewFilter("SupplierID", pb.ComparisonOperator_EQ, request.SupplierID))
 	}
 	if len(request.ConsumerID) > 0 {
-		conditions = append(conditions, "consumer_id=?")
-		values = append(values, request.ConsumerID)
+		filters = append(filters, NewFilter("ConsumerID", pb.ComparisonOperator_EQ, request.ConsumerID))
 	}
 	if len(request.ConsumerID) > 0 {
-		conditions = append(conditions, "master_id=?")
-		values = append(values, request.ConsumerID)
+		filters = append(filters, NewFilter("MasterID", pb.ComparisonOperator_EQ, request.MasterID))
 	}
 	if len(request.ConsumerID) > 0 {
-		conditions = append(conditions, "ask_id=?")
-		values = append(values, request.ConsumerID)
+		filters = append(filters, NewFilter("AskID", pb.ComparisonOperator_EQ, request.AskID))
 	}
 	if len(request.ConsumerID) > 0 {
-		conditions = append(conditions, "bid_id=?")
-		values = append(values, request.ConsumerID)
+		filters = append(filters, NewFilter("BidID", pb.ComparisonOperator_EQ, request.BidID))
 	}
-	if request.DurationSeconds > 0 {
-		conditions = append(conditions, fmt.Sprintf("duration%s?", getOperator(request.DurationOperator)))
-		values = append(values, request.DurationSeconds)
+	if request.Duration > 0 {
+		filters = append(filters, NewFilter("Duration", request.DurationOperator, request.Duration))
 	}
-	if request.Price > 0 {
-		conditions = append(conditions, fmt.Sprintf("price%s?", getOperator(request.PriceOperator)))
-		values = append(values, request.Price)
+	if len(request.Price) > 0 {
+		filters = append(filters, NewFilter("Price", request.PriceOperator, request.Price))
+	}
+	if request.StartTime.Seconds > 0 {
+		filters = append(filters, NewFilter("StartTime", pb.ComparisonOperator_EQ, request.StartTime.Seconds))
+	}
+	if request.EndTime.Seconds > 0 {
+		filters = append(filters, NewFilter("EndTime", pb.ComparisonOperator_EQ, request.EndTime.Seconds))
 	}
 	if request.Status != pb.MarketDealStatus_MARKET_STATUS_UNKNOWN {
-		conditions = append(conditions, "status=?")
-		values = append(values, request.Status)
+		filters = append(filters, NewFilter("", pb.ComparisonOperator_EQ, request.Status))
 	}
-	if len(conditions) > 0 {
-		query += " WHERE " + strings.Join(conditions, " AND ")
+	if len(request.TotalPayout) > 0 {
+		filters = append(filters, NewFilter("", pb.ComparisonOperator_EQ, request.TotalPayout))
 	}
-	query += " ORDER BY price ASC"
-	if request.Limit > 0 {
-		query += fmt.Sprintf(" LIMIT %d", request.Limit)
+	if request.LastBillTS.Seconds > 0 {
+		filters = append(filters, NewFilter("", pb.ComparisonOperator_EQ, request.LastBillTS.Seconds))
 	}
-	if request.Offset > 0 {
-		query += fmt.Sprintf(" OFFSET %d", request.Offset)
-	}
-	query += ";"
-
-	rows, err := w.db.Query(query, values...)
+	rows, query, err := RunQuery(w.db, "deals_denormalized", request.Offset, request.Limit, filters...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "query `%s` failed", query)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -155,7 +141,7 @@ func (w *DWH) GetDealsList(ctx context.Context, request *pb.DealsListRequest) (*
 	for rows.Next() {
 		deal, err := w.decodeDeal(rows)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "failed to decode deal, query `%s`", query)
 		}
 		deals = append(deals, deal)
 	}
@@ -175,6 +161,9 @@ func (w *DWH) GetOrdersList(ctx context.Context, request *pb.OrdersListRequest) 
 	defer w.mu.RUnlock()
 
 	var filters []*Filter
+	if len(request.DealID) > 0 {
+		filters = append(filters, NewFilter("DealID", pb.ComparisonOperator_EQ, request.AuthorID))
+	}
 	if request.Type > 0 {
 		filters = append(filters, NewFilter("Type", pb.ComparisonOperator_EQ, request.Type))
 	}
@@ -182,21 +171,24 @@ func (w *DWH) GetOrdersList(ctx context.Context, request *pb.OrdersListRequest) 
 		filters = append(filters, NewFilter("Status", pb.ComparisonOperator_EQ, request.Status))
 	}
 	if len(request.AuthorID) > 0 {
-		filters = append(filters, NewFilter("Author_id", pb.ComparisonOperator_EQ, request.AuthorID))
+		filters = append(filters, NewFilter("AuthorID", pb.ComparisonOperator_EQ, request.AuthorID))
 	}
 	if len(request.CounterpartyID) > 0 {
 		filters = append(filters, NewFilter("CounterpartyID", pb.ComparisonOperator_EQ, request.CounterpartyID))
 	}
-	if request.DurationSeconds > 0 {
-		filters = append(filters, NewFilter("Duration", pb.ComparisonOperator_EQ, request.DurationSeconds))
+	if request.Duration > 0 {
+		filters = append(filters, NewFilter("Duration", pb.ComparisonOperator_EQ, request.Duration))
 	}
-	if request.Price > 0 {
+	if len(request.Price) > 0 {
 		filters = append(filters, NewFilter("Price", pb.ComparisonOperator_EQ, request.Price))
 	}
-	if request.Type > 0 {
+	if request.Netflags > 0 {
+		filters = append(filters, NewFilter("Netflags", pb.ComparisonOperator_EQ, request.Netflags))
+	}
+	if request.IdentityLevel > 0 {
 		filters = append(filters, NewFilter("Type", pb.ComparisonOperator_EQ, request.Type))
 	}
-	rows, query, err := RunQuery(w.db, "orders", request.Offset, request.Limit, filters...)
+	rows, query, err := RunQuery(w.db, "orders_denormalized", request.Offset, request.Limit, filters...)
 	if err != nil {
 		return nil, err
 	}
@@ -314,9 +306,39 @@ func (w *DWH) setupSQLite() (*sql.DB, error) {
 		return nil, errors.Wrapf(err, "failed to create orders table (%s)", w.cfg.Storage.Backend)
 	}
 
-	_, err = db.Exec(createTableChangesSQLite)
+	_, err = db.Exec(createTableBenchmarksSQLite)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create requests table (%s)", w.cfg.Storage.Backend)
+		return nil, errors.Wrapf(err, "failed to create benchmarks table (%s)", w.cfg.Storage.Backend)
+	}
+
+	_, err = db.Exec(createTableConditionsSQLite)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create benchmarks table (%s)", w.cfg.Storage.Backend)
+	}
+
+	_, err = db.Exec(createTableChangeRequestsSQLite)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create benchmarks table (%s)", w.cfg.Storage.Backend)
+	}
+
+	_, err = db.Exec(createTableValidatorsSQLite)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create benchmarks table (%s)", w.cfg.Storage.Backend)
+	}
+
+	_, err = db.Exec(createTableCertificatesSQLite)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create benchmarks table (%s)", w.cfg.Storage.Backend)
+	}
+
+	_, err = db.Exec(createTableWorkersSQLite)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create benchmarks table (%s)", w.cfg.Storage.Backend)
+	}
+
+	_, err = db.Exec(createTableBlacklistsSQLite)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create benchmarks table (%s)", w.cfg.Storage.Backend)
 	}
 
 	_, err = db.Exec(createTableMiscSQLite)
@@ -558,6 +580,7 @@ func (w *DWH) decodeDeal(rows *sql.Rows) (*pb.MarketDeal, error) {
 func (w *DWH) decodeOrder(rows *sql.Rows) (*pb.MarketOrder, error) {
 	var (
 		id              string
+		dealID          string
 		orderType       uint64
 		status          uint64
 		author          string
@@ -573,6 +596,7 @@ func (w *DWH) decodeOrder(rows *sql.Rows) (*pb.MarketOrder, error) {
 	)
 	if err := rows.Scan(
 		&id,
+		&dealID,
 		&orderType,
 		&status,
 		&author,
@@ -605,6 +629,7 @@ func (w *DWH) decodeOrder(rows *sql.Rows) (*pb.MarketOrder, error) {
 
 	return &pb.MarketOrder{
 		Id:            id,
+		DealID:        dealID,
 		OrderType:     pb.MarketOrderType(orderType),
 		OrderStatus:   pb.MarketOrderStatus(status),
 		Author:        author,

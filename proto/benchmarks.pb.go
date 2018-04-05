@@ -37,10 +37,10 @@ It has these top-level messages:
 	NetworkSpec
 	Container
 	Deal
-	OrdersListRequest
-	OrdersListReply
 	DealsListRequest
 	DealsListReply
+	OrdersListRequest
+	OrdersListReply
 	DealChangeRequestsReply
 	DealChangeRequest
 	StartTaskRequest

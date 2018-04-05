@@ -16,54 +16,103 @@ const (
 // SQL statements for SQLite backend.
 var (
 	createTableDealsSQLite = `
-	CREATE TABLE IF NOT EXISTS deals (
-		Id					TEXT PRIMARY KEY,
-		Benchmarks			BLOB NOT NULL,
-		SupplierID			TEXT NOT NULL,
-		ConsumerID			TEXT NOT NULL,
-		MasterID			TEXT NOT NULL,
-		AskID				TEXT NOT NULL,
-		BidID				TEXT NOT NULL,
-		Duration 			UNSIGNED INTEGER NOT NULL,
-		Price				TEXT NOT NULL,
-		Start_time			UNSIGNED INTEGER NOT NULL,
-		End_time			UNSIGNED INTEGER NOT NULL,
-		Status				UNSIGNED INTEGER NOT NULL,
-		Blocked_balance		TEXT NOT NULL,
-		Total_payout		TEXT NOT NULL,
-		Last_bill_ts		UNSIGNED INTEGER NOT NULL
+	CREATE TABLE IF NOT EXISTS Deals (
+		Id						TEXT PRIMARY KEY,
+		SupplierID				TEXT NOT NULL,
+		ConsumerID				TEXT NOT NULL,
+		MasterID				TEXT NOT NULL,
+		AskID					TEXT NOT NULL,
+		BidID					TEXT NOT NULL,
+		Duration 				UNSIGNED INTEGER NOT NULL,
+		Price					TEXT NOT NULL,
+		StartTime				UNSIGNED INTEGER NOT NULL,
+		EndTime					UNSIGNED INTEGER NOT NULL,
+		Status					UNSIGNED INTEGER NOT NULL,
+		BlockedBalance			TEXT NOT NULL,
+		TotalPayout				TEXT NOT NULL,
+		LastBillTS				UNSIGNED INTEGER NOT NULL
 	);`
 	createTableOrdersSQLite = `
-	CREATE TABLE IF NOT EXISTS orders (
-		Id					TEXT PRIMARY KEY,
-		Type				UNSIGNED INTEGER NOT NULL,
-		Status				UNSIGNED INTEGER NOT NULL,
-		AuthorID			TEXT NOT NULL,
-		CounterpartyID		TEXT NOT NULL,
-		Price				TEXT NOT NULL,
-		Duration 			UNSIGNED INTEGER NOT NULL,
-		Netflags			BLOB NOT NULL,
-		IdentityLevel		UNSIGNED INTEGER NOT NULL,
-		Blacklist			TEXT NOT NULL,
-		Tag					BLOB NOT NULL,
-		Benchmarks			BLOB NOT NULL,
-		Frozen_sum			TEXT NOT NULL
+	CREATE TABLE IF NOT EXISTS Orders (
+		Id						TEXT PRIMARY KEY,
+		DealID					TEXT NOT NULL,
+		Type					UNSIGNED INTEGER NOT NULL,
+		Status					UNSIGNED INTEGER NOT NULL,
+		AuthorID				TEXT NOT NULL,
+		CounterpartyID			TEXT NOT NULL,
+		Duration 				UNSIGNED INTEGER NOT NULL,
+		Price					TEXT NOT NULL,
+		Netflags				UNSIGNED INTEGER NULL,
+		IdentityLevel			UNSIGNED INTEGER NOT NULL,
+		Blacklist				TEXT NOT NULL,
+		Tag						TEXT NOT NULL,
+		FrozenSum				TEXT NOT NULL
 	);`
-	createTableChangesSQLite = `
-	CREATE TABLE IF NOT EXISTS change_requests (
-		Duration 			UNSIGNED INTEGER NOT NULL,
-		Price				TEXT NOT NULL,
-		Deal				TEXT NOT NULL,
-		FOREIGN KEY (deal)	REFERENCES deals(Id) ON DELETE CASCADE
+	createTableBenchmarksSQLite = `
+	CREATE TABLE IF NOT EXISTS Benchmarks (
+		OrderID						TEXT NOT NULL,
+		FOREIGN KEY (OrderID)		REFERENCES Orders(Id) ON DELETE CASCADE,
+		BenchmarkID					UNSIGNED INTEGER NOT NULL,
+		Value						UNSIGNED INTEGER NOT NULL
+	);`
+	createTableConditionsSQLite = `
+	CREATE TABLE IF NOT EXISTS Conditions (
+		DealID						TEXT NOT NULL,
+		FOREIGN KEY (DealID)		REFERENCES Deals(Id) ON DELETE CASCADE,
+		SupplierID					TEXT NOT NULL,
+		ConsumerID					TEXT NOT NULL,
+		MasterID					TEXT NOT NULL,
+		Duration 					UNSIGNED INTEGER NOT NULL,
+		Price						TEXT NOT NULL,
+		StartTime					UNSIGNED INTEGER NOT NULL,
+		EndTime						UNSIGNED INTEGER NOT NULL,
+		TotalPayout					TEXT NOT NULL
+	);`
+	createTableChangeRequestsSQLite = `
+	CREATE TABLE IF NOT EXISTS Orders (
+		DealID						TEXT NOT NULL,
+		FOREIGN KEY (DealID)		REFERENCES Deals(Id) ON DELETE CASCADE,
+		CreatedTS					UNSIGNED INTEGER NOT NULL,
+		Side						TEXT NOT NULL,
+		Duration 					UNSIGNED INTEGER NOT NULL,
+		Price						TEXT NOT NULL,
+		AcceptedTS					UNSIGNED INTEGER NOT NULL,
+	);`
+	createTableValidatorsSQLite = `
+	CREATE TABLE IF NOT EXISTS Validators (
+		Id							TEXT NOT NULL,
+		Status						UNSIGNED INTEGER NOT NULL,
+		Level						UNSIGNED INTEGER NOT NULL
+	);`
+	createTableCertificatesSQLite = `
+	CREATE TABLE IF NOT EXISTS Certificates (
+		Id							TEXT PRIMARY KEY,
+		Address						TEXT NOT NULL,
+		ValidatorID					TEXT NOT NULL,
+		FOREIGN KEY (ValidatorID)	REFERENCES Validators(Id) ON DELETE CASCADE,
+		Attribute					TEXT NOT NULL,
+		AttributeLevel				UNSIGNED INTEGER NOT NULL,
+		Value						TEXT NOT NULL,
+	);`
+	createTableBlacklistsSQLite = `
+	CREATE TABLE IF NOT EXISTS Blacklists (
+		OwnerAddress				TEXT NOT NULL,
+		Address						TEXT NOT NULL,
+	);`
+	createTableWorkersSQLite = `
+	CREATE TABLE IF NOT EXISTS Workers (
+		MasterID					TEXT NOT NULL,
+		WorkerID					TEXT NOT NULL,
+		Confirmed					UNSIGNED INTEGER NOT NULL,
 	);`
 	createTableMiscSQLite = `
 	CREATE TABLE IF NOT EXISTS misc (
-		Last_known_block	INTEGER NOT NULL
+		LastKnownBlock				INTEGER NOT NULL
 	);`
 	insertDealSQLite           = `INSERT OR REPLACE INTO deals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	insertOrderSQLite          = `INSERT OR REPLACE INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	deleteOrderSQLite          = `DELETE FROM orders WHERE id=?`
-	updateLastKnownBlockSQLite = "UPDATE misc SET last_known_block=?"
+	deleteOrderSQLite          = `DELETE FROM orders WHERE Id=?`
+	updateLastKnownBlockSQLite = "UPDATE misc SET LastKnownBlock=?"
 	selectLastKnownBlock       = `SELECT * from misc;`
 )
 

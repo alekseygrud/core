@@ -50,7 +50,7 @@ func TestDWH_GetDealDetails(t *testing.T) {
 func TestDWH_GetOrdersList(t *testing.T) {
 	reply, err := w.GetOrdersList(context.Background(), &pb.OrdersListRequest{
 		Type:             pb.MarketOrderType_MARKET_ANY,
-		DurationSeconds:  20015,
+		Duration:         20015,
 		DurationOperator: pb.ComparisonOperator_EQ,
 		Limit:            1,
 	})
@@ -151,6 +151,7 @@ func getTestDWH() (*DWH, error) {
 		_, err := w.db.Exec(
 			insertOrderSQLite,
 			fmt.Sprintf("id_%d", i),
+			fmt.Sprintf("id_%d", i),
 			uint64(pb.MarketOrderType_MARKET_ASK),
 			uint64(pb.MarketOrderStatus_MARKET_ORDER_ACTIVE),
 			fmt.Sprintf("author_%d", i),
@@ -158,7 +159,7 @@ func getTestDWH() (*DWH, error) {
 			"10010", // Price
 			20010+i,
 			netflagsBytes,
-			uint64(pb.MarketIdentityLevel_MARKET_IDENTRIFIED),
+			uint64(pb.MarketIdentityLevel_MARKET_ANONIMOUS),
 			fmt.Sprintf("blacklist_%d", i),
 			[]byte{1, 2, 3}, // Tag
 			benchmarksBytes,

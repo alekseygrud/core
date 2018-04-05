@@ -3,6 +3,7 @@ syntax = "proto3";
 import "bigint.proto";
 import "marketplace.proto";
 import "insonmnia.proto";
+import "timestamp.proto";
 
 package sonm;
 
@@ -21,40 +22,47 @@ service DWH {
     rpc GetDealChangeRequests(ID) returns (DealChangeRequestsReply) {}
 }
 
-message OrdersListRequest {
-    MarketOrderType type = 1;
-    MarketOrderStatus status = 2;
-    string authorID = 3;
-    string counterpartyID = 4;
-    uint64 durationSeconds = 5;
-    ComparisonOperator durationOperator = 6;
-    uint64 price = 8;
-    ComparisonOperator priceOperator = 9;
-    uint64 limit = 10;
-    uint64 offset = 11;
-}
-
-message OrdersListReply {
-    repeated MarketOrder orders = 1;
-}
-
 message DealsListRequest {
     string supplierID = 1;
     string consumerID = 2;
     string masterID = 3;
     string askID = 4;
     string bidID = 5;
-    uint64 durationSeconds = 6;
+    uint64 duration = 6;
     ComparisonOperator durationOperator = 7;
-    uint64 price = 8;
+    string price = 8;
     ComparisonOperator priceOperator = 9;
+    Timestamp StartTime = 10;
+    Timestamp EndTime = 11;
     MarketDealStatus status = 12;
-    uint64 limit = 13;
-    uint64 offset = 14;
+    string totalPayout = 13;
+    Timestamp lastBillTS = 14;
+    uint64 limit = 15;
+    uint64 offset = 16;
 }
 
 message DealsListReply {
     repeated MarketDeal deals = 1;
+}
+
+message OrdersListRequest {
+    string dealID = 1;
+    MarketOrderType type = 2;
+    MarketOrderStatus status = 3;
+    string authorID = 4;
+    string counterpartyID = 5;
+    uint64 duration = 6;
+    ComparisonOperator durationOperator = 7;
+    string price = 9;
+    ComparisonOperator priceOperator = 10;
+    uint64 netflags = 11;
+    MarketIdentityLevel identityLevel = 12;
+    uint64 limit = 13;
+    uint64 offset = 14;
+}
+
+message OrdersListReply {
+    repeated MarketOrder orders = 1;
 }
 
 message DealChangeRequestsReply {
