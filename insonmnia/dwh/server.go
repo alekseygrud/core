@@ -101,13 +101,13 @@ func (w *DWH) GetDealsList(ctx context.Context, request *pb.DealsListRequest) (*
 	if len(request.ConsumerID) > 0 {
 		filters = append(filters, NewFilter("ConsumerID", pb.ComparisonOperator_EQ, request.ConsumerID))
 	}
-	if len(request.ConsumerID) > 0 {
+	if len(request.MasterID) > 0 {
 		filters = append(filters, NewFilter("MasterID", pb.ComparisonOperator_EQ, request.MasterID))
 	}
-	if len(request.ConsumerID) > 0 {
+	if len(request.AskID) > 0 {
 		filters = append(filters, NewFilter("AskID", pb.ComparisonOperator_EQ, request.AskID))
 	}
-	if len(request.ConsumerID) > 0 {
+	if len(request.BidID) > 0 {
 		filters = append(filters, NewFilter("BidID", pb.ComparisonOperator_EQ, request.BidID))
 	}
 	if request.Duration > 0 {
@@ -131,7 +131,7 @@ func (w *DWH) GetDealsList(ctx context.Context, request *pb.DealsListRequest) (*
 	if request.LastBillTS.Seconds > 0 {
 		filters = append(filters, NewFilter("", pb.ComparisonOperator_EQ, request.LastBillTS.Seconds))
 	}
-	rows, query, err := RunQuery(w.db, "deals_denormalized", request.Offset, request.Limit, filters...)
+	rows, query, err := RunQuery(w.db, "deals", request.Offset, request.Limit, filters...)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func (w *DWH) GetOrdersList(ctx context.Context, request *pb.OrdersListRequest) 
 	if request.IdentityLevel > 0 {
 		filters = append(filters, NewFilter("Type", pb.ComparisonOperator_EQ, request.Type))
 	}
-	rows, query, err := RunQuery(w.db, "orders_denormalized", request.Offset, request.Limit, filters...)
+	rows, query, err := RunQuery(w.db, "Orders", request.Offset, request.Limit, filters...)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ func (w *DWH) getDealDetails(ctx context.Context, request *pb.ID) (*pb.MarketDea
 }
 
 func (w *DWH) getOrderDetails(ctx context.Context, request *pb.ID) (*pb.MarketOrder, error) {
-	rows, err := w.db.Query("SELECT * FROM orders WHERE id=?", request.Id)
+	rows, err := w.db.Query("SELECT * FROM Orders WHERE id=?", request.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -436,7 +436,6 @@ func (w *DWH) onDealOpened(dealID *big.Int) error {
 	_, err = w.db.Exec(
 		insertDealSQLite,
 		deal.Id,
-		benchmarkBytes,
 		deal.SupplierID,
 		deal.ConsumerID,
 		deal.MasterID,
@@ -450,6 +449,7 @@ func (w *DWH) onDealOpened(dealID *big.Int) error {
 		deal.BlockedBalance.Unwrap().String(),
 		deal.TotalPayout.String(),
 		deal.LastBillTS.Seconds,
+		benchmarkBytes,
 	)
 	if err != nil {
 		return errors.Wrapf(err, "failed to insert deal into table")
@@ -495,8 +495,8 @@ func (w *DWH) onOrderPlaced(orderID *big.Int) error {
 		uint64(order.IdentityLevel),
 		order.Blacklist,
 		order.Tag,
-		benchmarkBytes,
 		order.FrozenSum.Unwrap().String(),
+		benchmarkBytes,
 	)
 	if err != nil {
 		return errors.Wrapf(err, "failed to insert order into table")
@@ -513,7 +513,6 @@ func (w *DWH) onOrderCancelled(orderID *big.Int) error {
 func (w *DWH) decodeDeal(rows *sql.Rows) (*pb.MarketDeal, error) {
 	var (
 		id              string
-		benchmarksBytes []byte
 		supplierID      string
 		consumerID      string
 		masterID        string
@@ -527,10 +526,10 @@ func (w *DWH) decodeDeal(rows *sql.Rows) (*pb.MarketDeal, error) {
 		blockedBalance  string
 		totalPayout     string
 		lastBillTS      int64
+		benchmarksBytes []byte
 	)
 	if err := rows.Scan(
 		&id,
-		&benchmarksBytes,
 		&supplierID,
 		&consumerID,
 		&masterID,
@@ -544,6 +543,7 @@ func (w *DWH) decodeDeal(rows *sql.Rows) (*pb.MarketDeal, error) {
 		&blockedBalance,
 		&totalPayout,
 		&lastBillTS,
+		&benchmarksBytes,
 	); err != nil {
 		w.logger.Error("failed to scan deal row", zap.Error(err))
 		return nil, err
@@ -562,7 +562,6 @@ func (w *DWH) decodeDeal(rows *sql.Rows) (*pb.MarketDeal, error) {
 
 	return &pb.MarketDeal{
 		Id:             id,
-		Benchmarks:     benchmarks,
 		SupplierID:     supplierID,
 		ConsumerID:     consumerID,
 		MasterID:       masterID,
@@ -574,6 +573,7 @@ func (w *DWH) decodeDeal(rows *sql.Rows) (*pb.MarketDeal, error) {
 		BlockedBalance: pb.NewBigInt(bigBlockedBalance),
 		TotalPayout:    pb.NewBigInt(bigTotalPayout),
 		LastBillTS:     &pb.Timestamp{Seconds: lastBillTS},
+		Benchmarks:     benchmarks,
 	}, nil
 }
 
@@ -601,14 +601,14 @@ func (w *DWH) decodeOrder(rows *sql.Rows) (*pb.MarketOrder, error) {
 		&status,
 		&author,
 		&counterAgent,
-		&price,
 		&duration,
+		&price,
 		&netflagsBytes,
 		&identityLevel,
 		&blackList,
 		&tag,
-		&benchmarksBytes,
 		&frozenSum,
+		&benchmarksBytes,
 	); err != nil {
 		w.logger.Error("failed to scan order row", zap.Error(err))
 		return nil, err
@@ -640,7 +640,7 @@ func (w *DWH) decodeOrder(rows *sql.Rows) (*pb.MarketOrder, error) {
 		IdentityLevel: pb.MarketIdentityLevel(identityLevel),
 		Blacklist:     blackList,
 		Tag:           tag,
-		Benchmarks:    benchmarks,
 		FrozenSum:     pb.NewBigInt(bigFrozenSum),
+		Benchmarks:    benchmarks,
 	}, nil
 }

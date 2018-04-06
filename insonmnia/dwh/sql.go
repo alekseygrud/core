@@ -23,94 +23,96 @@ var (
 		MasterID				TEXT NOT NULL,
 		AskID					TEXT NOT NULL,
 		BidID					TEXT NOT NULL,
-		Duration 				UNSIGNED INTEGER NOT NULL,
+		Duration 				INTEGER NOT NULL,
 		Price					TEXT NOT NULL,
-		StartTime				UNSIGNED INTEGER NOT NULL,
-		EndTime					UNSIGNED INTEGER NOT NULL,
-		Status					UNSIGNED INTEGER NOT NULL,
+		StartTime				INTEGER NOT NULL,
+		EndTime					INTEGER NOT NULL,
+		Status					INTEGER NOT NULL,
 		BlockedBalance			TEXT NOT NULL,
 		TotalPayout				TEXT NOT NULL,
-		LastBillTS				UNSIGNED INTEGER NOT NULL
+		LastBillTS				INTEGER NOT NULL,
+		Benchmarks				BLOB NOT NULL
 	);`
 	createTableOrdersSQLite = `
 	CREATE TABLE IF NOT EXISTS Orders (
 		Id						TEXT PRIMARY KEY,
 		DealID					TEXT NOT NULL,
-		Type					UNSIGNED INTEGER NOT NULL,
-		Status					UNSIGNED INTEGER NOT NULL,
+		Type					INTEGER NOT NULL,
+		Status					INTEGER NOT NULL,
 		AuthorID				TEXT NOT NULL,
 		CounterpartyID			TEXT NOT NULL,
-		Duration 				UNSIGNED INTEGER NOT NULL,
+		Duration 				INTEGER NOT NULL,
 		Price					TEXT NOT NULL,
-		Netflags				UNSIGNED INTEGER NULL,
-		IdentityLevel			UNSIGNED INTEGER NOT NULL,
+		Netflags				INTEGER NULL,
+		IdentityLevel			INTEGER NOT NULL,
 		Blacklist				TEXT NOT NULL,
 		Tag						TEXT NOT NULL,
-		FrozenSum				TEXT NOT NULL
+		FrozenSum				TEXT NOT NULL,
+		Benchmarks				BLOB NOT NULL
 	);`
 	createTableBenchmarksSQLite = `
 	CREATE TABLE IF NOT EXISTS Benchmarks (
+		BenchmarkID					INTEGER NOT NULL,
+		Value						INTEGER NOT NULL,
 		OrderID						TEXT NOT NULL,
-		FOREIGN KEY (OrderID)		REFERENCES Orders(Id) ON DELETE CASCADE,
-		BenchmarkID					UNSIGNED INTEGER NOT NULL,
-		Value						UNSIGNED INTEGER NOT NULL
+		FOREIGN KEY(OrderID)		REFERENCES Orders(Id) ON DELETE CASCADE
 	);`
 	createTableConditionsSQLite = `
 	CREATE TABLE IF NOT EXISTS Conditions (
-		DealID						TEXT NOT NULL,
-		FOREIGN KEY (DealID)		REFERENCES Deals(Id) ON DELETE CASCADE,
 		SupplierID					TEXT NOT NULL,
 		ConsumerID					TEXT NOT NULL,
 		MasterID					TEXT NOT NULL,
-		Duration 					UNSIGNED INTEGER NOT NULL,
+		Duration 					INTEGER NOT NULL,
 		Price						TEXT NOT NULL,
-		StartTime					UNSIGNED INTEGER NOT NULL,
-		EndTime						UNSIGNED INTEGER NOT NULL,
-		TotalPayout					TEXT NOT NULL
+		StartTime					INTEGER NOT NULL,
+		EndTime						INTEGER NOT NULL,
+		TotalPayout					TEXT NOT NULL,
+		DealID						TEXT NOT NULL,
+		FOREIGN KEY (DealID)		REFERENCES Deals(Id) ON DELETE CASCADE
 	);`
 	createTableChangeRequestsSQLite = `
 	CREATE TABLE IF NOT EXISTS Orders (
-		DealID						TEXT NOT NULL,
-		FOREIGN KEY (DealID)		REFERENCES Deals(Id) ON DELETE CASCADE,
-		CreatedTS					UNSIGNED INTEGER NOT NULL,
+		CreatedTS					INTEGER NOT NULL,
 		Side						TEXT NOT NULL,
-		Duration 					UNSIGNED INTEGER NOT NULL,
+		Duration 					INTEGER NOT NULL,
 		Price						TEXT NOT NULL,
-		AcceptedTS					UNSIGNED INTEGER NOT NULL,
+		AcceptedTS					INTEGER NOT NULL,
+		DealID						TEXT NOT NULL,
+		FOREIGN KEY (DealID)		REFERENCES Deals(Id) ON DELETE CASCADE
 	);`
 	createTableValidatorsSQLite = `
 	CREATE TABLE IF NOT EXISTS Validators (
 		Id							TEXT NOT NULL,
-		Status						UNSIGNED INTEGER NOT NULL,
-		Level						UNSIGNED INTEGER NOT NULL
+		Status						INTEGER NOT NULL,
+		Level						INTEGER NOT NULL
 	);`
 	createTableCertificatesSQLite = `
 	CREATE TABLE IF NOT EXISTS Certificates (
 		Id							TEXT PRIMARY KEY,
 		Address						TEXT NOT NULL,
-		ValidatorID					TEXT NOT NULL,
-		FOREIGN KEY (ValidatorID)	REFERENCES Validators(Id) ON DELETE CASCADE,
 		Attribute					TEXT NOT NULL,
-		AttributeLevel				UNSIGNED INTEGER NOT NULL,
+		AttributeLevel				INTEGER NOT NULL,
 		Value						TEXT NOT NULL,
+		ValidatorID					TEXT NOT NULL,
+		FOREIGN KEY (ValidatorID)	REFERENCES Validators(Id) ON DELETE CASCADE
 	);`
 	createTableBlacklistsSQLite = `
 	CREATE TABLE IF NOT EXISTS Blacklists (
 		OwnerAddress				TEXT NOT NULL,
-		Address						TEXT NOT NULL,
+		Address						TEXT NOT NULL
 	);`
 	createTableWorkersSQLite = `
 	CREATE TABLE IF NOT EXISTS Workers (
 		MasterID					TEXT NOT NULL,
 		WorkerID					TEXT NOT NULL,
-		Confirmed					UNSIGNED INTEGER NOT NULL,
+		Confirmed					INTEGER NOT NULL
 	);`
 	createTableMiscSQLite = `
 	CREATE TABLE IF NOT EXISTS misc (
 		LastKnownBlock				INTEGER NOT NULL
 	);`
 	insertDealSQLite           = `INSERT OR REPLACE INTO deals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	insertOrderSQLite          = `INSERT OR REPLACE INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	insertOrderSQLite          = `INSERT OR REPLACE INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	deleteOrderSQLite          = `DELETE FROM orders WHERE Id=?`
 	updateLastKnownBlockSQLite = "UPDATE misc SET LastKnownBlock=?"
 	selectLastKnownBlock       = `SELECT * from misc;`
@@ -167,6 +169,8 @@ func RunQuery(db *sql.DB, table string, offset, limit uint64, filters ...*Filter
 		query += fmt.Sprintf(" OFFSET %d", offset)
 	}
 	query += ";"
+
+	fmt.Println(query, values)
 
 	rows, err := db.Query(query, values...)
 	if err != nil {

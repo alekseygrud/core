@@ -2,11 +2,10 @@ package dwh
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
-
-	"encoding/json"
 
 	log "github.com/noxiouz/zapctx/ctxlog"
 	pb "github.com/sonm-io/core/proto"
@@ -32,7 +31,7 @@ func TestMain(m *testing.M) {
 
 	retCode := m.Run()
 	w.db.Close()
-	os.Remove(testDBPath)
+	//os.Remove(testDBPath)
 	os.Exit(retCode)
 }
 
@@ -127,7 +126,6 @@ func getTestDWH() (*DWH, error) {
 		_, err := w.db.Exec(
 			insertDealSQLite,
 			fmt.Sprintf("id_%d", i),
-			benchmarksBytes,
 			fmt.Sprintf("supplier_%d", i),
 			fmt.Sprintf("consumer_%d", i),
 			"master",
@@ -141,6 +139,7 @@ func getTestDWH() (*DWH, error) {
 			"10020", // BlockedBalance
 			"10030", // TotalPayout
 			30030+i, // LastBillTS
+			benchmarksBytes,
 		)
 		if err != nil {
 			return nil, err
@@ -156,14 +155,14 @@ func getTestDWH() (*DWH, error) {
 			uint64(pb.MarketOrderStatus_MARKET_ORDER_ACTIVE),
 			fmt.Sprintf("author_%d", i),
 			fmt.Sprintf("counterparty_%d", i),
-			"10010", // Price
 			20010+i,
+			"10010", // Price
 			netflagsBytes,
 			uint64(pb.MarketIdentityLevel_MARKET_ANONIMOUS),
 			fmt.Sprintf("blacklist_%d", i),
 			[]byte{1, 2, 3}, // Tag
+			"10020",         // FrozenSum
 			benchmarksBytes,
-			"10020", // FrozenSum
 		)
 		if err != nil {
 			return nil, err
