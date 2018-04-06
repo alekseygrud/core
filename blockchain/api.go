@@ -44,6 +44,7 @@ type MarketAPI interface {
 	ConfirmWorker(ctx context.Context, key *ecdsa.PrivateKey, slave common.Address) (*types.Transaction, error)
 	RemoveWorker(ctx context.Context, key *ecdsa.PrivateKey, master, slave common.Address) (*types.Transaction, error)
 	GetMaster(ctx context.Context, key *ecdsa.PrivateKey, slave common.Address) (common.Address, error)
+	GetDealChangeRequestInfo(ctx context.Context, dealID *big.Int) (*pb.DealChangeRequest, error)
 	GetMarketEvents(ctx context.Context, fromBlockInitial *big.Int) (chan *Event, error)
 }
 
@@ -227,8 +228,8 @@ func (api *BasicAPI) GetOrderInfo(ctx context.Context, orderID *big.Int) (*pb.Ma
 		OrderStatus:   pb.MarketOrderStatus(order2.OrderStatus),
 		Author:        order1.Author.String(),
 		Counterparty:  order1.Counterparty.String(),
-		Price:         pb.NewBigInt(order1.Price),
 		Duration:      order1.Duration.Uint64(),
+		Price:         pb.NewBigInt(order1.Price),
 		Netflags:      order1.Netflags[:],
 		IdentityLevel: pb.MarketIdentityLevel(order1.IdentityLevel),
 		Blacklist:     order1.Blacklist.String(),
@@ -405,6 +406,21 @@ func (api *BasicAPI) processLog(log types.Log, marketABI abi.ABI, out chan *Even
 			BlockNumber: log.BlockNumber,
 		}
 	}
+}
+
+func (api *BasicAPI) GetDealChangeRequestInfo(ctx context.Context, dealID *big.Int) (*pb.DealChangeRequest, error) {
+	changeRequest, err := api.marketContract.GetChangeRequestInfo(getCallOptions(ctx), dealID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.DealChangeRequest{
+		DealID:      changeRequest.DealID.String(),
+		RequestType: pb.MarketOrderType(changeRequest.RequestType),
+		Duration:    changeRequest.Duration.Uint64(),
+		Price:       pb.NewBigInt(changeRequest.Price),
+		Status:      pb.MarketChangeRequestStatus(changeRequest.Status),
+	}, nil
 }
 
 func (api *BasicAPI) Check(ctx context.Context, who, whom common.Address) (bool, error) {

@@ -63,6 +63,14 @@ enum MarketDealStatus {
     MARKET_STATUS_CLOSED = 2;
 }
 
+enum MarketChangeRequestStatus {
+    REQUEST_UNKNOWN = 0;
+    REQUEST_CREATED = 1;
+    REQUEST_CANCELED = 2;
+    REQUEST_REJECTED = 3;
+    REQUEST_ACCEPTED = 4;
+}
+
 // GetProcessingReply represent Node's local
 // orders processing status
 message GetProcessingReply {
@@ -78,6 +86,25 @@ message GetProcessingReply {
 
 message TouchOrdersRequest {
     repeated string IDs = 1;
+}
+
+
+message MarketDeal {
+    string id = 1;
+    repeated uint64 benchmarks = 2;
+    string supplierID = 3;
+    string consumerID = 4;
+    string masterID = 5;
+    string askID = 6;
+    string bidID = 7;
+    uint64 duration = 8;
+    BigInt price = 9;
+    Timestamp startTime = 10;
+    Timestamp endTime = 11;
+    MarketDealStatus status = 12;
+    BigInt blockedBalance = 13;
+    BigInt totalPayout = 14;
+    Timestamp lastBillTS = 15;
 }
 
 message MarketOrder {
@@ -97,20 +124,11 @@ message MarketOrder {
     BigInt frozenSum = 14;
 }
 
-message MarketDeal {
+message DealChangeRequest {
     string id = 1;
-    repeated uint64 benchmarks = 2;
-    string supplierID = 3;
-    string consumerID = 4;
-    string masterID = 5;
-    string askID = 6;
-    string bidID = 7;
-    uint64 duration = 8;
-    BigInt price = 9;
-    Timestamp startTime = 10;
-    Timestamp endTime = 11;
-    MarketDealStatus status = 12;
-    BigInt blockedBalance = 13;
-    BigInt totalPayout = 14;
-    Timestamp lastBillTS = 15;
+    string dealID = 2;
+    MarketOrderType requestType = 3;
+    uint64 duration = 4;
+    BigInt price = 5;
+    MarketChangeRequestStatus status = 6;
 }

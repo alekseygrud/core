@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-import "bigint.proto";
 import "marketplace.proto";
 import "insonmnia.proto";
 import "timestamp.proto";
@@ -67,9 +66,4 @@ message OrdersListReply {
 
 message DealChangeRequestsReply {
     repeated DealChangeRequest changeRequests = 1;
-}
-
-message DealChangeRequest {
-    uint64 durationSeconds = 1;
-    BigInt price = 2;
 }

@@ -42,7 +42,6 @@ It has these top-level messages:
 	OrdersListRequest
 	OrdersListReply
 	DealChangeRequestsReply
-	DealChangeRequest
 	StartTaskRequest
 	HubJoinNetworkRequest
 	StartTaskReply
@@ -78,8 +77,9 @@ It has these top-level messages:
 	GetOrdersReply
 	GetProcessingReply
 	TouchOrdersRequest
-	MarketOrder
 	MarketDeal
+	MarketOrder
+	DealChangeRequest
 	MinerStartRequest
 	MinerStartReply
 	TaskInfo

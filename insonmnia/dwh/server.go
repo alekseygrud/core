@@ -390,12 +390,20 @@ func (w *DWH) watchMarketEvents() error {
 	for event := range dealEvents {
 		switch value := event.Data.(type) {
 		case *blockchain.DealOpenedData:
-			if err := w.onDealOpened(value.ID); err != nil {
+			deal, err := w.blockchain.GetDealInfo(context.Background(), value.ID)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get deal info")
+			}
+			if err := w.onDealOpened(deal); err != nil {
 				w.logger.Error("failed to process DealOpened event",
 					zap.Error(err), zap.String("deal_id", value.ID.String()))
 			}
 		case *blockchain.DealUpdatedData:
-			if err := w.onDealUpdated(value.ID); err != nil {
+			deal, err := w.blockchain.GetDealInfo(context.Background(), value.ID)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get deal info")
+			}
+			if err := w.onDealUpdated(deal); err != nil {
 				w.logger.Error("failed to process DealUpdated event",
 					zap.Error(err), zap.String("deal_id", value.ID.String()))
 			}
@@ -407,6 +415,31 @@ func (w *DWH) watchMarketEvents() error {
 		case *blockchain.OrderUpdatedData:
 			if err := w.onOrderCancelled(value.ID); err != nil {
 				w.logger.Error("failed to process OrderCancelled event",
+					zap.Error(err), zap.String("deal_id", value.ID.String()))
+			}
+		case *blockchain.DealChangeRequestSentData:
+			if err := w.onDealChangeRequestSent(event.BlockNumber, value.ID); err != nil {
+				w.logger.Error("failed to process DealChangeRequestSent event",
+					zap.Error(err), zap.String("deal_id", value.ID.String()))
+			}
+		case *blockchain.DealChangeRequestUpdatedData:
+			if err := w.onDealChangeRequestUpdated(value.ID); err != nil {
+				w.logger.Error("failed to process DealChangeRequestUpdated event",
+					zap.Error(err), zap.String("deal_id", value.ID.String()))
+			}
+		case *blockchain.WorkerAnnouncedData:
+			if err := w.onWorkerAnnounced(value.ID); err != nil {
+				w.logger.Error("failed to process WorkerAnnounced event",
+					zap.Error(err), zap.String("deal_id", value.ID.String()))
+			}
+		case *blockchain.WorkerConfirmedData:
+			if err := w.onWorkerConfirmed(value.ID); err != nil {
+				w.logger.Error("failed to process WorkerConfirmed event",
+					zap.Error(err), zap.String("deal_id", value.ID.String()))
+			}
+		case *blockchain.WorkerRemovedData:
+			if err := w.onWorkerRemoved(value.ID); err != nil {
+				w.logger.Error("failed to process WorkerRemoved event",
 					zap.Error(err), zap.String("deal_id", value.ID.String()))
 			}
 		case *blockchain.ErrorData:
@@ -422,12 +455,7 @@ func (w *DWH) watchMarketEvents() error {
 	return errors.New("events channel closed")
 }
 
-func (w *DWH) onDealOpened(dealID *big.Int) error {
-	deal, err := w.blockchain.GetDealInfo(context.Background(), dealID)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get deal info")
-	}
-
+func (w *DWH) onDealOpened(deal *pb.MarketDeal) error {
 	benchmarkBytes, err := json.Marshal(deal.Benchmarks)
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal benchmarks")
@@ -458,12 +486,8 @@ func (w *DWH) onDealOpened(dealID *big.Int) error {
 	return nil
 }
 
-func (w *DWH) onDealUpdated(dealID *big.Int) error {
-	return w.onDealOpened(dealID)
-}
-
-func (w *DWH) onDealClosed(dealID *big.Int) error {
-	return w.onDealOpened(dealID)
+func (w *DWH) onDealUpdated(deal *pb.MarketDeal) error {
+	return w.onDealOpened(deal)
 }
 
 func (w *DWH) onOrderPlaced(orderID *big.Int) error {
@@ -509,6 +533,56 @@ func (w *DWH) onOrderCancelled(orderID *big.Int) error {
 	_, err := w.db.Exec(deleteOrderSQLite, orderID.String())
 	return err
 }
+
+func (w *DWH) onDealChangeRequestSent(blockNumber uint64, changeRequestID *big.Int) error {
+	changeRequest, err := w.blockchain.GetDealChangeRequestInfo(w.ctx, changeRequestID)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.db.Exec(
+		insertDealChangeRequestSQLite,
+		blockNumber,
+		0,
+		changeRequest.RequestType,
+		changeRequest.Duration,
+		changeRequest.Price.String(),
+		changeRequest.Status,
+	)
+
+	return err
+}
+
+func (w *DWH) onDealChangeRequestUpdated(blockNumber uint64, changeRequestID *big.Int) error {
+	changeRequest, err := w.blockchain.GetDealChangeRequestInfo(w.ctx, changeRequestID)
+	if err != nil {
+		return err
+	}
+
+	switch changeRequest.Status {
+	case pb.MarketChangeRequestStatus_REQUEST_ACCEPTED:
+		_, err := w.db.Exec(
+			"UPDATE ChangeRequests SET Status = ? WHERE Id = ?",
+			changeRequest.Status,
+			changeRequest.Id,
+		)
+		if err != nil {
+			return errors.Wrapf(err, "failed to update change request %s", changeRequest.Id)
+		}
+	case pb.MarketChangeRequestStatus_REQUEST_REJECTED, pb.MarketChangeRequestStatus_REQUEST_CANCELED:
+		_, err := w.db.Exec("DELETE FROM ChangeRequests WHERE Id = ?", changeRequest.Id)
+		if err != nil {
+			return errors.Wrapf(err, "failed to delete change request %s", changeRequest.Id)
+		}
+	}
+
+	return nil
+}
+
+//func (w *DWH) onDealChangeRequestUpdated(ID *big.Int) error {}
+//func (w *DWH) onWorkerAnnounced(ID *big.Int) error          {}
+//func (w *DWH) onWorkerConfirmedData(ID *big.Int) error      {}
+//func (w *DWH) onWorkerRemoved(ID *big.Int) error            {}
 
 func (w *DWH) decodeDeal(rows *sql.Rows) (*pb.MarketDeal, error) {
 	var (

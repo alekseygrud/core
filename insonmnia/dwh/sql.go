@@ -72,11 +72,13 @@ var (
 	);`
 	createTableChangeRequestsSQLite = `
 	CREATE TABLE IF NOT EXISTS Orders (
+		Id 							TEXT PRIMARY KEY,
 		CreatedTS					INTEGER NOT NULL,
-		Side						TEXT NOT NULL,
+		AcceptedTS					INTEGER NOT NULL,
+		RequestType					TEXT NOT NULL,
 		Duration 					INTEGER NOT NULL,
 		Price						TEXT NOT NULL,
-		AcceptedTS					INTEGER NOT NULL,
+		Status						INTEGER NOT NULL,
 		DealID						TEXT NOT NULL,
 		FOREIGN KEY (DealID)		REFERENCES Deals(Id) ON DELETE CASCADE
 	);`
@@ -111,11 +113,12 @@ var (
 	CREATE TABLE IF NOT EXISTS misc (
 		LastKnownBlock				INTEGER NOT NULL
 	);`
-	insertDealSQLite           = `INSERT OR REPLACE INTO deals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	insertOrderSQLite          = `INSERT OR REPLACE INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	deleteOrderSQLite          = `DELETE FROM orders WHERE Id=?`
-	updateLastKnownBlockSQLite = "UPDATE misc SET LastKnownBlock=?"
-	selectLastKnownBlock       = `SELECT * from misc;`
+	insertDealSQLite              = `INSERT OR REPLACE INTO deals VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	insertOrderSQLite             = `INSERT OR REPLACE INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	insertDealChangeRequestSQLite = `INSERT OR REPLACE INTO orders VALUES (?, ?, ?, ?, ?, ?, ?)`
+	deleteOrderSQLite             = `DELETE FROM Orders WHERE Id=?`
+	updateLastKnownBlockSQLite    = "UPDATE misc SET LastKnownBlock=?"
+	selectLastKnownBlock          = `SELECT * from misc;`
 )
 
 type Filter struct {

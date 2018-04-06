@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 
 	retCode := m.Run()
 	w.db.Close()
-	//os.Remove(testDBPath)
+	os.Remove(testDBPath)
 	os.Exit(retCode)
 }
 
