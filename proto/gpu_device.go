@@ -1,6 +1,10 @@
 package sonm
 
-import "github.com/cnf/structhash"
+import (
+	"fmt"
+
+	"github.com/cnf/structhash"
+)
 
 var Radeons = []uint64{
 	4098,
@@ -33,6 +37,6 @@ func (m *GPUDevice) VendorType() GPUVendorType {
 	return TypeFromVendorID(m.VendorID)
 }
 
-func (m *GPUDevice) Hash() []byte {
-	return structhash.Md5(m, 1)
+func (m *GPUDevice) Hash() string {
+	return fmt.Sprintf("%x", structhash.Md5(m, 1))
 }
